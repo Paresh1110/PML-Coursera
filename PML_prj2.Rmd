@@ -1,0 +1,142 @@
+---
+title: "PML2"
+author: "Paresh Prabhu"
+date: "10/22/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+# 1. Loading Data
+
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(RColorBrewer)
+library(rattle)
+library(randomForest)
+library(gbm)
+
+
+
+trainDt <- read.csv("pml-training.csv")
+testDt <- read.csv("pml-testing.csv")
+
+dim(trainDt)
+
+dim(testDt)
+
+
+# 2. Clean Data
+
+### Remove Variables which are non-numeric, have close to no variance & those with NA values.
+
+NZV <- nearZeroVar(trainDt)
+
+
+FTrDt <- trainDt[,-NZV]
+FtDT <- testDt[,-NZV]
+
+dim(FTrDt)
+
+dim(FtDT)
+
+
+
+N_ACol <- sapply(FTrDt, function(x) mean(is.na(x))) > 0.95
+
+FTrDt <- FTrDt[,N_ACol == FALSE]
+FtDT <- FtDT[,N_ACol == FALSE]
+
+dim(FTrDt)
+
+dim(FtDT)
+
+
+
+
+FTrDt <- FTrDt[,8:59]
+FtDT <- FtDT[,8:59]
+
+dim(FTrDt)
+dim(FtDT)
+
+
+colnames(FTrDt)
+colnames(FtDT)
+
+
+
+
+# Separate Data
+
+
+inTr <- createDataPartition(FTrDt$classe, p=0.6, list=FALSE)
+tra <- FTrDt[inTr,]
+tes <- FTrDt[-inTr,]
+
+dim(tra)
+
+dim(tes)
+
+
+# Decision Tree Model 
+
+
+M_DT <- train(classe ~ ., data = tra, method="rpart")
+
+
+### Decision Tree Model
+Prdt_DT <- predict(M_DT, tes)
+confusionMatrix(Prdt_DT, tes$classe)
+
+rpart.plot(M_DT$finalModel, roundint=FALSE)
+
+### 50% prediction accuracy
+
+
+
+##s Random Forest Model
+
+M_Rf <- train(classe ~ ., data = tra, method = "rf", ntree = 100)
+
+
+Prd_Rf <- predict(M_Rf, tes)
+Prd_Rf_Cf <- confusionMatrix(Prd_Rf, tes$classe)
+Prd_Rf_Cf
+
+
+plot(Prd_Rf_Cf$table, col = Prd_Rf_Cf$byClass, 
+     main = paste("Random Forest - Accuracy Level =",
+                  round(Prd_Rf_Cf$overall['Accuracy'], 4)))
+
+### Satisfactory accuracy of 99% from Random Forest model.
+
+
+
+## Gradient Boosting Model
+
+M_Gbm <- train(classe ~ ., data = tra, method = "gbm", verbose = FALSE)
+M_Gbm$finalModel
+
+Prd_Gbm <- predict(M_Gbm, tes)
+
+Prd_Gbm_Cf <- confusionMatrix(Prd_Gbm, tes$classe)
+Prd_Gbm_Cf
+
+### ACcuracy of only  96% from GBM
+
+
+
+# Conclusion 
+#### The RF model shows more accuracy than GBM, hence it is selected for final prediction from FtDT.
+
+
+Fin_Prd_Rf <- predict(M_Rf, FtDT )
+Fin_Prd_Rf
+
+```
